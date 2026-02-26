@@ -90,6 +90,10 @@ nav{will-change:backdrop-filter}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 .cursor{position:fixed;width:8px;height:8px;background:var(--purple);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform 0.1s;mix-blend-mode:screen}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1px solid var(--purple);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all 0.15s ease;opacity:0.5}
+.touch-dot{position:fixed;width:10px;height:10px;background:var(--purple);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%) scale(0.8);opacity:0;transition:opacity 0.2s,transform 0.2s;mix-blend-mode:screen}
+.touch-ring{position:fixed;width:38px;height:38px;border:1px solid var(--purple);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%) scale(0.9);opacity:0;transition:opacity 0.25s,transform 0.25s}
+.touch-dot.active{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.touch-ring.active{opacity:0.55;transform:translate(-50%,-50%) scale(1)}
 
 /* Noise overlay */
 body::before{
@@ -560,26 +564,6 @@ footer{
 .back-top.visible{opacity:1;transform:translateY(0);pointer-events:all}
 .back-top:hover{background:var(--purple2)}
 
-/* ── TAP RIPPLE ── */
-.tap-ripple{
-  position:fixed;
-  width:18px;
-  height:18px;
-  border:1px solid var(--purple);
-  border-radius:50%;
-  pointer-events:none;
-  z-index:9997;
-  transform:translate(-50%,-50%) scale(0.6);
-  opacity:0.65;
-  animation:tapRipple 0.45s ease-out forwards;
-}
-@keyframes tapRipple{
-  to{
-    transform:translate(-50%,-50%) scale(3.2);
-    opacity:0;
-  }
-}
-
 /* ── IMPROVED MOBILE ── */
 @media(max-width:768px){
   .nav-menu{display:none}
@@ -629,22 +613,6 @@ footer{
   .nav-mobile a{font-size:1.5rem}
   .contact-form,.contact-email,.resume-card{width:100%}
   .contact-socials,.footer-socials{flex-wrap:wrap}
-}
-
-@media(hover:none){
-  .btn:active,
-  .f-submit:active,
-  .p-link:active,
-  .c-social:active,
-  .footer-social:active,
-  .nav-mobile a:active,
-  .about-card:active,
-  .project-card:active,
-  .skill-block:active,
-  .resume-card:active{
-    transform:scale(0.985);
-    border-color:var(--purple-dim);
-  }
 }
 
 @media(max-width:420px){
@@ -772,6 +740,8 @@ footer{
 <!-- Custom cursor -->
 <div class="cursor" id="cursor"></div>
 <div class="cursor-ring" id="cursorRing"></div>
+<div class="touch-dot" id="touchDot"></div>
+<div class="touch-ring" id="touchRing"></div>
 
 <!-- NAV -->
 <nav>
@@ -1255,6 +1225,8 @@ function startTyping() {
 // ── CUSTOM CURSOR ──
 const cursor = document.getElementById('cursor');
 const ring = document.getElementById('cursorRing');
+const touchDot = document.getElementById('touchDot');
+const touchRing = document.getElementById('touchRing');
 document.addEventListener('mousemove', e => {
   cursor.style.left = e.clientX + 'px';
   cursor.style.top = e.clientY + 'px';
@@ -1331,20 +1303,39 @@ if (window.matchMedia('(hover: none)').matches) {
   cursor.style.display = 'none';
   ring.style.display = 'none';
 
-  const rippleTargets = 'a, button, .project-card, .skill-block, .about-card, .resume-card';
-  document.addEventListener('touchstart', e => {
-    const touch = e.touches[0];
-    if (!touch) return;
-    const hitTarget = e.target.closest(rippleTargets);
-    if (!hitTarget) return;
+  let touchFadeTimer;
+  const updateTouchIndicator = (x, y) => {
+    touchDot.style.left = x + 'px';
+    touchDot.style.top = y + 'px';
+    touchRing.style.left = x + 'px';
+    touchRing.style.top = y + 'px';
+    touchDot.classList.add('active');
+    touchRing.classList.add('active');
+  };
 
-    const ripple = document.createElement('span');
-    ripple.className = 'tap-ripple';
-    ripple.style.left = touch.clientX + 'px';
-    ripple.style.top = touch.clientY + 'px';
-    document.body.appendChild(ripple);
-    ripple.addEventListener('animationend', () => ripple.remove(), {once: true});
+  document.addEventListener('touchstart', e => {
+    const t = e.touches[0];
+    if (!t) return;
+    clearTimeout(touchFadeTimer);
+    updateTouchIndicator(t.clientX, t.clientY);
   }, {passive: true});
+
+  document.addEventListener('touchmove', e => {
+    const t = e.touches[0];
+    if (!t) return;
+    updateTouchIndicator(t.clientX, t.clientY);
+  }, {passive: true});
+
+  const fadeTouchIndicator = () => {
+    clearTimeout(touchFadeTimer);
+    touchFadeTimer = setTimeout(() => {
+      touchDot.classList.remove('active');
+      touchRing.classList.remove('active');
+    }, 120);
+  };
+
+  document.addEventListener('touchend', fadeTouchIndicator, {passive: true});
+  document.addEventListener('touchcancel', fadeTouchIndicator, {passive: true});
 }
 
 if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
