@@ -90,10 +90,10 @@ nav{will-change:backdrop-filter}
 @keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 .cursor{position:fixed;width:8px;height:8px;background:var(--purple);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%);transition:transform 0.1s;mix-blend-mode:screen}
 .cursor-ring{position:fixed;width:32px;height:32px;border:1px solid var(--purple);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%);transition:all 0.15s ease;opacity:0.5}
-.touch-dot{position:fixed;width:10px;height:10px;background:var(--purple);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%) scale(0.8);opacity:0;transition:opacity 0.2s,transform 0.2s;mix-blend-mode:screen}
-.touch-ring{position:fixed;width:38px;height:38px;border:1px solid var(--purple);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%) scale(0.9);opacity:0;transition:opacity 0.25s,transform 0.25s}
-.touch-dot.active{opacity:1;transform:translate(-50%,-50%) scale(1)}
-.touch-ring.active{opacity:0.55;transform:translate(-50%,-50%) scale(1)}
+.touch-dot{position:fixed;width:10px;height:10px;background:var(--purple);border-radius:50%;pointer-events:none;z-index:9999;transform:translate(-50%,-50%) scale(0.8);opacity:0;display:none;transition:opacity 0.16s,transform 0.16s;mix-blend-mode:screen}
+.touch-ring{position:fixed;width:38px;height:38px;border:1px solid var(--purple);border-radius:50%;pointer-events:none;z-index:9998;transform:translate(-50%,-50%) scale(0.9);opacity:0;display:none;transition:opacity 0.2s,transform 0.2s}
+.touch-dot.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+.touch-ring.show{opacity:0.55;transform:translate(-50%,-50%) scale(1)}
 
 /* Noise overlay */
 body::before{
@@ -1299,9 +1299,13 @@ const revealObs = new IntersectionObserver(entries => {
 }, {threshold: 0.1});
 revealEls.forEach(r => revealObs.observe(r));
 // ── MOBILE + ACCESSIBILITY TWEAKS ──
-if (window.matchMedia('(hover: none)').matches) {
+const isTouchDevice = window.matchMedia('(any-pointer: coarse)').matches || navigator.maxTouchPoints > 0 || 'ontouchstart' in window;
+
+if (isTouchDevice) {
   cursor.style.display = 'none';
   ring.style.display = 'none';
+  touchDot.style.display = 'block';
+  touchRing.style.display = 'block';
 
   let touchFadeTimer;
   const updateTouchIndicator = (x, y) => {
@@ -1309,14 +1313,18 @@ if (window.matchMedia('(hover: none)').matches) {
     touchDot.style.top = y + 'px';
     touchRing.style.left = x + 'px';
     touchRing.style.top = y + 'px';
-    touchDot.classList.add('active');
-    touchRing.classList.add('active');
+    touchDot.classList.add('show');
+    touchRing.classList.add('show');
+    clearTimeout(touchFadeTimer);
+    touchFadeTimer = setTimeout(() => {
+      touchDot.classList.remove('show');
+      touchRing.classList.remove('show');
+    }, 180);
   };
 
   document.addEventListener('touchstart', e => {
     const t = e.touches[0];
     if (!t) return;
-    clearTimeout(touchFadeTimer);
     updateTouchIndicator(t.clientX, t.clientY);
   }, {passive: true});
 
@@ -1328,10 +1336,8 @@ if (window.matchMedia('(hover: none)').matches) {
 
   const fadeTouchIndicator = () => {
     clearTimeout(touchFadeTimer);
-    touchFadeTimer = setTimeout(() => {
-      touchDot.classList.remove('active');
-      touchRing.classList.remove('active');
-    }, 120);
+    touchDot.classList.remove('show');
+    touchRing.classList.remove('show');
   };
 
   document.addEventListener('touchend', fadeTouchIndicator, {passive: true});
